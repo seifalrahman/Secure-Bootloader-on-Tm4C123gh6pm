@@ -6,6 +6,7 @@ static uint32_t programAddress=0 ;
 static uint32_t CipherAddress =0;
 static uint32_t HashAddress=0;\
 static uint32_t size ;
+static uint8_t  HashorCmac=0 ;
 UART_HandleTypeDef huart2;
 CRC_HandleTypeDef  hcrc  ;
 static uint8_t Bootloader_CRC_Verify(uint8_t *pData , uint32_t Data_Len , uint32_t Host_CRC);
@@ -508,43 +509,51 @@ static void Bootloader_Get_Chip_Identification_Number(uint8_t *Host_Buffer){
 				    plainText[i] =   temp ;
 				   // TESTPLAINTEXT[i] =  *( uint8_t*)((( uint8_t*)(FLASH_SECTOR2_BASE_ADDRESS))+i) ;
 				}
-                struct tc_sha256_state_struct s;
-                uint8_t hash[TC_SHA256_DIGEST_SIZE];
-                tc_sha256_init(&s);
-                tc_sha256_update(&s, plainText, size );
-                tc_sha256_final(hash, &s);
-                /////////////////////////////////////////////////
-//                const uint8_t key[16] = {
-//                        0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
-//                        0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
-//                    };
-//                struct tc_cmac_struct state;
-//                struct tc_aes_key_sched_struct sched;
-//                tc_cmac_setup(&state, key, &sched);
-//                uint8_t Tag[16] ;
-//                const uint8_t msg[16] = {
-//                        0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
-//                        0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a
-//                    };
-//
-//                tc_cmac_init(&state);
-//                tc_cmac_update(&state, msg, sizeof(msg));
-//                tc_cmac_final(Tag, &state);
-                /////////////////////////////////////////////////
-//                uint8_t hash2[TC_SHA256_DIGEST_SIZE];
-//                tc_sha256_init(&s);
-//                tc_sha256_update(&s, TESTPLAINTEXT, size );
-//                tc_sha256_final(hash2, &s);
+				int Secured =1;
+				uint8_t Tag[16] ;
+				if (HashorCmac==1){
+	                struct tc_sha256_state_struct s;
+	                uint8_t hash[TC_SHA256_DIGEST_SIZE];
+	                tc_sha256_init(&s);
+	                tc_sha256_update(&s, plainText, size );
+	                tc_sha256_final(hash, &s);
 
-                int Secured =1;
-                for (uint32_t i =0 ; i<TC_SHA256_DIGEST_SIZE ;i++ ){
-                    StoredHashValue[i]= *( uint8_t*)(( (( uint8_t*)(HashAddress))+i ));
-                    if(StoredHashValue[i]!=hash[i]){
-                        Secured=0;
-                        break ;
+	                for (uint32_t i =0 ; i<TC_SHA256_DIGEST_SIZE ;i++ ){
+	                    StoredHashValue[i]= *( uint8_t*)(( (( uint8_t*)(HashAddress))+i ));
+	                    if(StoredHashValue[i]!=hash[i]){
+	                        Secured=0;
+	                        break ;
 
-                    }
-                }
+	                    }
+	                }
+
+				}else if (HashorCmac==2){
+                        const uint8_t key[16] = {
+                                0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+                                0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
+                            };
+                        struct tc_cmac_struct state;
+                        struct tc_aes_key_sched_struct sched;
+                        tc_cmac_setup(&state, key, &sched);
+                        tc_cmac_init(&state);
+                        tc_cmac_update(&state, plainText, size);
+                        tc_cmac_final(Tag, &state);
+
+                        for (uint32_t i =0 ; i<16 ;i++ ){
+                            StoredHashValue[i]= *( uint8_t*)(((( uint8_t*)(HashAddress))+i)) ;
+                            if(StoredHashValue[i]!=Tag[i]){
+                                Secured=0;
+                                break ;
+
+                            }
+                        }
+
+
+
+				}
+
+
+
 
                 if(1==Secured){
 
@@ -675,6 +684,11 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payloa
 	    }else if (201 == Payload_Len) {
 	        Flash_Payload_Write_Status = HAL_FLASH_Program(32, Payload_Start_Address, Host_Payload);
 	        HashAddress= Payload_Start_Address;
+	        HashorCmac=1 ;
+	    }else if (202 == Payload_Len){
+	        Flash_Payload_Write_Status = HAL_FLASH_Program(16, Payload_Start_Address, Host_Payload);
+	        HashAddress= Payload_Start_Address;
+	        HashorCmac=2 ;
 	    }
 
 	}
