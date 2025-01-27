@@ -421,7 +421,7 @@ static void Bootloader_Get_Chip_Identification_Number(uint8_t *Host_Buffer){
 		Host_CMD_Packet_Len = Host_Buffer[0]+1;
 		Host_CRC32 = *((uint32_t *)((Host_Buffer+Host_CMD_Packet_Len)-CRC_TYPE_SIZE_BYTE)) ;
 		if(CRC_VERIFICATION_PASSED==Bootloader_CRC_Verify( Host_Buffer,Host_CMD_Packet_Len-CRC_TYPE_SIZE_BYTE,Host_CRC32)){
-				//Send ACK
+			//Send ACK
 			#if (BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE)
 			BL_Print_Message("CRC Verification Passed \r\n");
 			#endif
@@ -513,7 +513,24 @@ static void Bootloader_Get_Chip_Identification_Number(uint8_t *Host_Buffer){
                 tc_sha256_init(&s);
                 tc_sha256_update(&s, plainText, size );
                 tc_sha256_final(hash, &s);
-
+                /////////////////////////////////////////////////
+//                const uint8_t key[16] = {
+//                        0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+//                        0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
+//                    };
+//                struct tc_cmac_struct state;
+//                struct tc_aes_key_sched_struct sched;
+//                tc_cmac_setup(&state, key, &sched);
+//                uint8_t Tag[16] ;
+//                const uint8_t msg[16] = {
+//                        0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
+//                        0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a
+//                    };
+//
+//                tc_cmac_init(&state);
+//                tc_cmac_update(&state, msg, sizeof(msg));
+//                tc_cmac_final(Tag, &state);
+                /////////////////////////////////////////////////
 //                uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 //                tc_sha256_init(&s);
 //                tc_sha256_update(&s, TESTPLAINTEXT, size );
@@ -567,9 +584,13 @@ static uint8_t Perform_Flash_Erase (uint8_t Sector_Number , uint8_t Number_Of_Se
             for (; i<(Number_Of_Sectors+Sector_Number) ;i++){
                 Erase_Validity_Status= FlashErase(i*SECTOR_SIZE) ;
                 if(-1==Erase_Validity_Status){
+                    Erase_Validity_Status= 2 ;
                     break ;
+                }else{
+                    Erase_Validity_Status= 3 ;
                 }
             }
+
         }else {
             int i =0 ;
             int numberOfAppSectors = (size/SECTOR_SIZE)+1 ;
@@ -577,7 +598,10 @@ static uint8_t Perform_Flash_Erase (uint8_t Sector_Number , uint8_t Number_Of_Se
                 int num= ((0x10000)/SECTOR_SIZE)*SECTOR_SIZE ;
                 Erase_Validity_Status=FlashErase((num)+i*SECTOR_SIZE) ;
                 if(-1==Erase_Validity_Status){
+                    Erase_Validity_Status= 2 ;
                     break ;
+                }else{
+                    Erase_Validity_Status= 3 ;
                 }
             }
 
@@ -673,10 +697,6 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_Payload, uint32_t Payloa
 }
 
 
-
-
-
-uint32_t CodeAddress [200] ;
 
 
 

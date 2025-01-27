@@ -15,6 +15,7 @@
 #include "Wrapper_Functions.h"
 #include "inc/tm4c123gh6pm.h"
 #include "tinycrypt/sha256.h"
+#include <tinycrypt/cmac_mode.h>
 /*------------------Macro Declarations-------------------*/
 #define BL_DEBUG_UART  							&huart2
 #define BL_HOST_COMMUNICATION_UART  &huart2
